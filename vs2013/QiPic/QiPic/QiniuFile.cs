@@ -26,7 +26,12 @@ namespace QiPic
 
         public void Download(string filename, string dir)
         {
-            
+            // todo: 检查 dir 是否以 '/' 结束
+            // todo: 检查获取成功与否
+            string baseUrl = GetPolicy.MakeBaseUrl("7xosys.com1.z0.glb.clouddn.com", filename);
+            WebClient web = new WebClient();
+
+            web.DownloadFile(baseUrl, dir + filename);
         }
     }
 }
