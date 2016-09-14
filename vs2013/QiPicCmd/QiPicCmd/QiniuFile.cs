@@ -61,19 +61,28 @@ namespace QiPicCmd
 
             string filename = getFilenameFromPath(filepath);
 
+            //设置账号的AK和SK
+            Qiniu.Conf.Config.ACCESS_KEY = m_access_key;
+            Qiniu.Conf.Config.SECRET_KEY = m_secret_key;
+
             PutPolicy put;
             IOClient target = new IOClient();
             PutExtra extra = new PutExtra();
             Entry entry = null;
 
             // 判断是否覆盖上传
-            if (isOverlay || (!isOverlay && !GetFileInfo(filename, out entry)))
+            if(isOverlay && GetFileInfo(filename, out entry))
+            {
+                //覆盖上传,<bucket>:<key>，表示只允许用户上传指定key的文件。在这种格式下文件默认允许“修改”，已存在同名资源则会被本次覆盖。
+                put = new PutPolicy(m_bucketname + ":" + filename, 3600);
+            }
+            else if(!GetFileInfo(filename, out entry))
             {
                 put = new PutPolicy(m_bucketname, 3600);
             }
             else
             {
-                return entry;
+                return null;
             }
 
             // 调用Token()方法生成上传的Token
@@ -92,7 +101,7 @@ namespace QiPicCmd
         {
             // 获取文件名
             string filename;
-            int index = filepath.LastIndexOf("/");
+            int index = filepath.LastIndexOf(@"\");
 
             if (index == -1)
             {
@@ -100,6 +109,7 @@ namespace QiPicCmd
             }
             else
             {
+                index++;
                 filename = filepath.Substring(index, filepath.Length - index);
             }
 
