@@ -16,12 +16,9 @@ namespace QiPicCmd
 {
     class QiniuFile
     {
-        public QiniuFile(string ak, string sk, string baseurl, string bucketname, string savedir = "C:\\QiPic\\")
+        public QiniuFile(QiniuConfig qiniuconf, string savedir = "")
         {
-            m_access_key = ak;
-            m_secret_key = sk;
-            m_baseurl = baseurl;
-            m_bucketname = bucketname;
+            m_qiniuconf = qiniuconf;
             m_save_dir = savedir;
 
             if (!m_save_dir.EndsWith("/"))
@@ -45,13 +42,13 @@ namespace QiPicCmd
         public void Download(string filename)
         {
             // 由外部检查获取成功与否
-            string baseUrl = GetPolicy.MakeBaseUrl(m_baseurl, filename);
+            string baseUrl = GetPolicy.MakeBaseUrl("12", filename);
             WebClient web = new WebClient();
 
             web.DownloadFile(baseUrl, m_save_dir + filename);
         }
 
-        public Entry Upload(string filepath, bool isOverlay)
+        public Entry Upload(string filepath, bool isOverlay = false, string newname = "")
         {
             // 由外部检查获取成功与否
             filepath.Trim();
@@ -59,11 +56,12 @@ namespace QiPicCmd
             if (false == File.Exists(filepath))
                 throw new Exception("Error: Upload failed. File not Exists");
 
-            string filename = getFilenameFromPath(filepath);
+            if (newname == "")
+                newname = getFilenameFromPath(filepath);
 
             //设置账号的AK和SK
-            Qiniu.Conf.Config.ACCESS_KEY = m_access_key;
-            Qiniu.Conf.Config.SECRET_KEY = m_secret_key;
+            Qiniu.Conf.Config.ACCESS_KEY = m_qiniuconf.access_key;
+            Qiniu.Conf.Config.SECRET_KEY = m_qiniuconf.secret_key;
 
             PutPolicy put;
             IOClient target = new IOClient();
@@ -71,14 +69,14 @@ namespace QiPicCmd
             Entry entry = null;
 
             // 判断是否覆盖上传
-            if(isOverlay && GetFileInfo(filename, out entry))
+            if(isOverlay && GetFileInfo(newname, out entry))
             {
                 //覆盖上传,<bucket>:<key>，表示只允许用户上传指定key的文件。在这种格式下文件默认允许“修改”，已存在同名资源则会被本次覆盖。
-                put = new PutPolicy(m_bucketname + ":" + filename, 3600);
+                put = new PutPolicy(m_qiniuconf.bucketname + ":" + newname, 3600);
             }
-            else if(!GetFileInfo(filename, out entry))
+            else if(!GetFileInfo(newname, out entry))
             {
-                put = new PutPolicy(m_bucketname, 3600);
+                put = new PutPolicy(m_qiniuconf.bucketname, 3600);
             }
             else
             {
@@ -89,19 +87,40 @@ namespace QiPicCmd
             string upToken = put.Token();
 
             // 调用PutFile()方法上传
-            PutRet ret = target.PutFile(upToken, filename, filepath, extra);
+            PutRet ret = target.PutFile(upToken, newname, filepath, extra);
 
             // 获取文件上传信息
-            GetFileInfo(filename, out entry);
+            GetFileInfo(newname, out entry);
 
             return entry;
+        }
+
+        public List<string> getFilesWithPrefix(string prefix)
+        {
+
+            List<string> filelist = new List<string>();
+            RSFClient client = new RSFClient(m_qiniuconf.bucketname);
+            DumpRet files = client.ListPrefix(m_qiniuconf.bucketname, prefix);
+            
+            foreach(var i in files.Items)
+            {
+                filelist.Add(i.Key);
+            }
+            return filelist;
+        }
+
+        public bool IsFileExists(string filename)
+        {
+            Entry entry;
+
+            return GetFileInfo(filename, out entry);
         }
 
         private string getFilenameFromPath(string filepath)
         {
             // 获取文件名
             string filename;
-            int index = filepath.LastIndexOf(@"\");
+            int index = filepath.LastIndexOf(@"/");
 
             if (index == -1)
             {
@@ -121,49 +140,17 @@ namespace QiPicCmd
             //实例化一个RSClient对象，用于操作BucketManager里面的方法
             RSClient client = new RSClient();
             //调用Stat方法获取文件的信息
-            entry = client.Stat(new EntryPath(m_bucketname, filename));
+            entry = client.Stat(new EntryPath(m_qiniuconf.bucketname, filename));
             return entry.OK;
         }
 
-        private string m_access_key;
-        private string m_secret_key;
+        private QiniuConfig m_qiniuconf; 
         private string m_save_dir;
-        private string m_baseurl;
-        private string m_bucketname;
-
-        public string access_key
-        {
-            set
-            {
-                m_access_key = value;
-            }
-        }
-        public string secret_key
-        {
-            set
-            {
-                m_secret_key = value;
-            }
-        }
         public string save_dir
         {
             set
             {
                 m_save_dir = value;
-            }
-        }
-        public string baseurl
-        {
-            set
-            {
-                m_baseurl = value;
-            }
-        }
-        public string bucketname
-        {
-            set
-            {
-                m_bucketname = value;
             }
         }
 

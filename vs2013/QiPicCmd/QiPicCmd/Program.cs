@@ -24,9 +24,10 @@ namespace QiPicCmd
             Options options = new Options();
             if (CommandLine.Parser.Default.ParseArguments(args, options))
             {
-                QiniuFile qiniuFile = new QiniuFile("Wege4i-gz1IyWpCEfjhfEjZDj9U7IAhCXwq5FzxP", "l9DlUgST1KhGInpA--QMqeY3sLmaQ6nBCp_HOpH9", "7xosys.com1.z0.glb.clouddn.com", "notebook");
+                QiniuConfig conf = new QiniuConfig("Wege4i-gz1IyWpCEfjhfEjZDj9U7IAhCXwq5FzxP", "l9DlUgST1KhGInpA--QMqeY3sLmaQ6nBCp_HOpH9", "7xosys.com1.z0.glb.clouddn.com", "notebook");
+                QiPicFileSystem qiniu_fs = new QiPicFileSystem(conf);
 
-                qiniuFile.Upload("D:\\2016-09-10.md", true);
+                qiniu_fs.UploadToDir(@"D:\2016-09-10.md", "2016 - 09 - 10.md", "test");
                 Console.WriteLine(options.SaveDir);
             }
             else 
