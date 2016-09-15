@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace QiPicCmd
 {
-    class QiniuConfig
+    public class QiniuConfig
     {
         public QiniuConfig(string ak, string sk, string baseurl, string bucketname)
         {

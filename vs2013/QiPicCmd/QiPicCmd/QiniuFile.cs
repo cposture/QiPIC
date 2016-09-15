@@ -14,41 +14,46 @@ using Qiniu.RPC;
 
 namespace QiPicCmd
 {
-    class QiniuFile
+    public class FileStat
     {
-        public QiniuFile(QiniuConfig qiniuconf, string savedir = "")
+        public string name;
+        public long size;
+        public long time;
+        public string type;
+        public string hash;
+    }
+
+    public class QiniuFile
+    {
+        public QiniuFile(QiniuConfig qiniuconf, string savedir)
         {
             m_qiniuconf = qiniuconf;
             m_save_dir = savedir;
 
-            if (!m_save_dir.EndsWith("/"))
+            if (savedir != "" && !m_save_dir.EndsWith("/"))
                 m_save_dir += "/";
+        }
 
-            try
-            {
-                if (!Directory.Exists(m_save_dir))
-                    Directory.CreateDirectory(m_save_dir);
-            }
-            catch(DirectoryNotFoundException e)
-            {
-                Console.WriteLine("Error: Create directory failed. Invalid savedir path!\n" + e.Message);
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine("Error: Create directory failed. \n" + e.Message);
-            }
+        public void init()
+        {
+            if (!Directory.Exists(m_save_dir))
+                Directory.CreateDirectory(m_save_dir);
+
+            //设置账号的AK和SK
+            Qiniu.Conf.Config.ACCESS_KEY = m_qiniuconf.access_key;
+            Qiniu.Conf.Config.SECRET_KEY = m_qiniuconf.secret_key;
         }
 
         public void Download(string filename)
         {
             // 由外部检查获取成功与否
-            string baseUrl = GetPolicy.MakeBaseUrl("12", filename);
+            string baseUrl = GetPolicy.MakeBaseUrl(m_qiniuconf.baseurl, filename);
             WebClient web = new WebClient();
 
             web.DownloadFile(baseUrl, m_save_dir + filename);
         }
 
-        public Entry Upload(string filepath, bool isOverlay = false, string newname = "")
+        public FileStat Upload(string filepath, bool isOverlay = false, string newname = "")
         {
             // 由外部检查获取成功与否
             filepath.Trim();
@@ -58,10 +63,6 @@ namespace QiPicCmd
 
             if (newname == "")
                 newname = getFilenameFromPath(filepath);
-
-            //设置账号的AK和SK
-            Qiniu.Conf.Config.ACCESS_KEY = m_qiniuconf.access_key;
-            Qiniu.Conf.Config.SECRET_KEY = m_qiniuconf.secret_key;
 
             PutPolicy put;
             IOClient target = new IOClient();
@@ -92,7 +93,12 @@ namespace QiPicCmd
             // 获取文件上传信息
             GetFileInfo(newname, out entry);
 
-            return entry;
+            FileStat file_stat;
+            ConverEntryToFileStat(ref entry, out file_stat);
+
+            file_stat.name = newname;
+
+            return file_stat;
         }
 
         public List<string> getFilesWithPrefix(string prefix)
@@ -144,6 +150,16 @@ namespace QiPicCmd
             return entry.OK;
         }
 
+        private void ConverEntryToFileStat(ref Entry entry, out FileStat file_stat)
+        {
+            file_stat = new FileStat();
+
+            file_stat.hash = entry.Hash;
+            file_stat.size = entry.Fsize;
+            file_stat.time = entry.PutTime;
+            file_stat.type = entry.MimeType;
+        }
+
         private QiniuConfig m_qiniuconf; 
         private string m_save_dir;
         public string save_dir
@@ -153,6 +169,5 @@ namespace QiPicCmd
                 m_save_dir = value;
             }
         }
-
     }
 }

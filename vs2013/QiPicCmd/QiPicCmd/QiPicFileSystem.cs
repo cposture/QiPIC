@@ -9,7 +9,7 @@ namespace QiPicCmd
 {
     class QiPicFileSystem: QiniuFile
     {
-        public QiPicFileSystem(QiniuConfig conf):base(conf)
+        public QiPicFileSystem(QiniuConfig conf, string savedir):base(conf, savedir)
         {
             
         }
